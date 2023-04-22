@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.18;
-//import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -10,9 +9,9 @@ contract DriverPayment is Ownable {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    address public owner; // Autopass
-    address private immutable uniswapRouter;
+    IUniswapV2Router02 public uniswapRouter;
     address private immutable usdcToken;
+    address private immutable ethToken;
     uint256 public interestRate = 0.1 * 1e18; // the interest that Autopass pay to driver
     uint256 public rewardRate = 0.05 * 1e18; // the reward that Autopass pay to driver
     uint256 public serviceFeeRate = 0.02 * 1e18; // the gas station pays Autopass for using the service
@@ -23,9 +22,10 @@ contract DriverPayment is Ownable {
     mapping(address => uint256) private timestamps;
 
     constructor(address _uniswapRouter, address _usdcToken) {
-        owner = msg.sender;
-        uniswapRouter = _uniswapRouter;
+        transferOwnership(msg.sender);
+        uniswapRouter = IUniswapV2Router02(_uniswapRouter);
         usdcToken = _usdcToken;
+        ethToken = _ethToken;
     }
 
     function createEntry(
@@ -59,7 +59,7 @@ contract DriverPayment is Ownable {
     //amount進來前就要*10^18
     function depositWETH(uint256 amount) public payable {
         address[] memory path = new address[](2);
-        path[0] = IUniswapV2Router02(uniswapRouter).WETH();
+        path[0] = uniswapRouter.WETH();
         path[1] = usdcToken;
         uint256 deadline = block.timestamp + 300; // 5 minute deadline
 
@@ -74,6 +74,16 @@ contract DriverPayment is Ownable {
         );
         // jason: what are the items inside of amounts?
         driverBalances[msg.sender] += amounts[1];
+
+        (uint256 tokenReceived, uint256 ethRemained) = uniswapRouter
+            .swapExactETHForTokens{value: msg.value}(
+            amount,
+            path,
+            address(this),
+            deadline
+        );
+        require(ethRemained == 0, "too much ETH"");
+        driverBalances[msg.sender] += tokenReceived;
     }
 
     function payInterest(address _driver, uint times) internal onlyOwner {
