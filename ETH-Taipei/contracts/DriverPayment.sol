@@ -15,11 +15,13 @@ contract DriverPayment {
     uint256 public _REWARD_RATE;
     uint256 public _STATION_SERVICE_FEE_RATE;
     uint256 public _INTEREST_RATE;
+    uint256 public _PAY_INTEREST_PERIOD;
     uint256 User_count;
     uint256 Station_count;
     mapping(address => uint256) Station_balances; //machi, not usdc
     mapping(address => uint256) User_balances;
     mapping(bytes32 => address) licenseToAddress;
+    mapping(bytes32 => address) Timestamp;
 
     constructor(address _uniswapRouter, address _usdcToken) {
         _owner = msg.sender;
@@ -30,6 +32,7 @@ contract DriverPayment {
         _REWARD_RATE = 0.05 ether; // 5%
         _INTEREST_RATE = 0.1 ether; // 10%
         _STATION_SERVICE_FEE_RATE = 0.02 ether; // 2%
+        _PAY_INTEREST_PERIOD = 2592000;
     }
 
     //if function with this modifier should satisfy owner check
@@ -38,7 +41,7 @@ contract DriverPayment {
         _;
     }
 
-    function depositWETH(address token, uint256 amount) external {
+    function depositWETH(uint256 amount) external {
         //amount進來前就要*10^18
         address[] memory path = new address[](2);
         path[0] = IUniswapV2Router02(uniswapRouter).WETH();
@@ -70,10 +73,23 @@ contract DriverPayment {
         User_balances[driver_address] += _reward;
     }
 
-    function pay_interest() public onlyOwner {
-        for (uint i = 0; i < User_balances.length; i++) {
-            User_balances[i] *= _INTEREST_RATE / 1e18;
+    function pay_interest(address user_addr, uint times) internal onlyOwner {
+        for (uint i = times; i > 0; i--) {
+            User_balances[user_addr] *= _INTEREST_RATE / 1e18;
         }
+        Timestamp[user_addr] =
+            block.timestamp -
+            (block.timestamp % _PAY_INTEREST_PERIOD);
+    }
+
+    function user_watch_balance(address user_addr) public {
+        uint times = Timestamp[user_addr] -
+            block.timestamp /
+            _PAY_INTEREST_PERIOD;
+        if (times > 0) {
+            pay_interest(user_addr, times);
+        }
+        return User_balances[user_addr];
     }
 
     function registerCar(
