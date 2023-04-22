@@ -6,6 +6,18 @@ describe("DriverPayment", function () {
     let owner, driver, gasStation;
     let DriverPayment, driverPayment, usdcToken, uniswapRouter;
 
+    async function deployTokenFixture() {
+        const Token = await ethers.getContractFactory("Token");
+        const [owner, addr1, addr2] = await ethers.getSigners();
+
+        const hardhatToken = await Token.deploy();
+
+        await hardhatToken.deployed();
+
+        // Fixtures can return anything you consider useful for your tests
+        return { Token, hardhatToken, owner, addr1, addr2 };
+    }
+
     beforeEach(async function () {
         [owner, driver, gasStation, signer] = await ethers.getSigners();
 

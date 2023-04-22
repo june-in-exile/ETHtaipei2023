@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.18;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -10,21 +10,25 @@ contract DriverPayment is Ownable {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    IUniswapV2Router02 public uniswapRouter;
+    address public constant routerAddress =
+        0xE592427A0AEce92De3Edee1F18E0157C05861564;
+    ISwapRouter public immutable swapRouter = ISwapRouter(routerAddress);
     address private immutable usdcToken;
     address private immutable ethToken;
+    uint24 public constant poolFee = 3000;
+
     uint256 public interestRate = 0.1 * 1e18; // the interest that Autopass pay to driver
     uint256 public rewardRate = 0.05 * 1e18; // the reward that Autopass pay to driver
     uint256 public serviceFeeRate = 0.02 * 1e18; // the gas station pays Autopass for using the service
     uint256 public payInterestPeriod = 30 * 24 * 60 * 60; //month;
-    mapping(address => uint256) private stationBalances; //machi, not usdc
+
+    mapping(address => uint256) private stationBalances;
     mapping(address => uint256) private driverBalances;
     mapping(bytes32 => address) private registry;
     mapping(address => uint256) private timestamps;
 
-    constructor(address _uniswapRouter, address _usdcToken, address _ethToken) {
+    constructor(address _usdcToken, address _ethToken) {
         transferOwnership(msg.sender);
-        uniswapRouter = IUniswapV2Router02(_uniswapRouter);
         usdcToken = _usdcToken;
         ethToken = _ethToken;
     }
@@ -57,19 +61,30 @@ contract DriverPayment is Ownable {
         delete registry[plateHash];
     }
 
-    //amount進來前就要*10^18
-    function depositWETH(uint256 amount) public payable {
-        address[] memory path = new address[](2);
-        path[0] = uniswapRouter.WETH();
-        path[1] = usdcToken;
-        uint256 deadline = block.timestamp + 300; // 5 minute deadline
+    function swapExactInputSingle(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn
+    ) internal returns (uint256 amountOut) {
+        IERC20(tokenIn).approve(address(swapRouter), amountIn);
 
-        // Call the Uniswap router's swapExactETHForTokens function to convert ETH to token
-        uint256[] memory amounts = uniswapRouter.swapExactETHForTokens{
-            value: msg.value
-        }(amount, path, address(this), deadline);
-        require(amounts[1] == 0, "too much ETH");
-        driverBalances[msg.sender] += amounts[0];
+        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
+            .ExactInputSingleParams({
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                fee: poolFee,
+                recipient: address(this),
+                deadline: block.timestamp,
+                amountIn: amountIn,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            });
+        amountOut = swapRouter.exactInputSingle(params);
+    }
+
+    function depositWETH(uint256 amountIn) public payable {
+        uint256 amountOut = swapExactInputSingle(ethToken, usdcToken, amountIn);
+        driverBalances[msg.sender] += amountOut;
     }
 
     function payInterest(address _driver, uint times) internal onlyOwner {
