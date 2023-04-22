@@ -4,6 +4,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract DriverPayment is Ownable {
     using SafeERC20 for IERC20;
@@ -21,7 +22,7 @@ contract DriverPayment is Ownable {
     mapping(bytes32 => address) private registry;
     mapping(address => uint256) private timestamps;
 
-    constructor(address _uniswapRouter, address _usdcToken) {
+    constructor(address _uniswapRouter, address _usdcToken, address _ethToken) {
         transferOwnership(msg.sender);
         uniswapRouter = IUniswapV2Router02(_uniswapRouter);
         usdcToken = _usdcToken;
@@ -58,33 +59,17 @@ contract DriverPayment is Ownable {
 
     //amount進來前就要*10^18
     function depositWETH(uint256 amount) public payable {
-        IERC20(usdcToken).transferFrom(msg.sender, address(this), amount);
         address[] memory path = new address[](2);
         path[0] = uniswapRouter.WETH();
         path[1] = usdcToken;
         uint256 deadline = block.timestamp + 300; // 5 minute deadline
 
         // Call the Uniswap router's swapExactETHForTokens function to convert ETH to token
-        // jason: not sure how this functions work?
-        uint256[] memory amounts = IUniswapV2Router02(uniswapRouter)
-            .swapExactETHForTokens{value: msg.value}(
-            amount,
-            path,
-            address(this),
-            deadline
-        );
-        // jason: what are the items inside of amounts?
-        driverBalances[msg.sender] += amounts[1];
-
-        (uint256 tokenReceived, uint256 ethRemained) = uniswapRouter
-            .swapExactETHForTokens{value: msg.value}(
-            amount,
-            path,
-            address(this),
-            deadline
-        );
-        require(ethRemained == 0, "too much ETH");
-        driverBalances[msg.sender] += tokenReceived;
+        uint256[] memory amounts = uniswapRouter.swapExactETHForTokens{
+            value: msg.value
+        }(amount, path, address(this), deadline);
+        require(amounts[1] == 0, "too much ETH");
+        driverBalances[msg.sender] += amounts[0];
     }
 
     function payInterest(address _driver, uint times) internal onlyOwner {
@@ -102,7 +87,9 @@ contract DriverPayment is Ownable {
         }
     }
 
-    function getDriverBalance(address _driver) public onlyOwner {
+    function getDriverBalance(
+        address _driver
+    ) public onlyOwner returns (uint256) {
         updateDriverBalance(_driver);
         return driverBalances[_driver];
     }
