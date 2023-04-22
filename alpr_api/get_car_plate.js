@@ -9,7 +9,7 @@ const FormData = require('form-data');
 const fs = require('fs');
 
 const url = 'https://hackathon-alpr.pklotcorp.com/alpr';
-const file_path = '/Users/xujiawei/Downloads/autopass_alpr_api/car_plate.jpg';
+const file_path = './car_plate.jpg';
 const detect_brand = 'true';
 
 const form = new FormData();
