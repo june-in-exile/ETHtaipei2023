@@ -38,7 +38,7 @@ contract DriverPayment is Ownable {
 
     function viewEntry(
         string memory _plate
-    ) external view onlyOwner returns (address) {
+    ) public view onlyOwner returns (address) {
         bytes32 plateHash = keccak256(abi.encodePacked(_plate));
         return registry[plateHash];
     }
@@ -98,31 +98,36 @@ contract DriverPayment is Ownable {
 
     function pay(
         string memory _plate,
-        address _gasStation,
+        address _station,
         uint256 _amount
     ) public onlyOwner {
-        updateDriverBalance(_driver);
-        bytes32 plateHash = keccak256(abi.encodePacked(_plate));
-        address driver = registry[plateHash];
+        address driver = viewEntry(_plate);
+        updateDriverBalance(driver);
         require(driverBalances[driver] >= _amount);
         driverBalances[driver] -= _amount;
-        driverBalances[_gasStation] += _amount;
+        stationBalances[_station] += _amount;
         uint256 _reward = (_amount * rewardRate) / 1e18;
         driverBalances[driver] += _reward;
     }
 
-    function createStation(address station) external view returns (uint256) {
-        return stationBalances[station];
+    function createStation(address station) external {
+        stationBalances[station] = 0;
     }
 
-    function stationBalanceOf(address station) external view returns (uint256) {
+    function deleteStation(address station) external {
+        delete stationBalances[station];
+    }
+
+    function viewStationBalance(
+        address station
+    ) external view returns (uint256) {
         return stationBalances[station];
     }
 
     function stationWithdrawUSDC(uint256 amount) external {
         require(stationBalances[msg.sender] >= amount);
         stationBalances[msg.sender] -= amount;
-        amount *= serviceFeeRate / 1e18;
+        amount *= (1e18 - serviceFeeRate) / 1e18;
         IERC20(usdcToken).safeTransfer(msg.sender, amount);
     }
 }
