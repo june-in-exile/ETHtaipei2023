@@ -6,10 +6,9 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-contract DriverPayment {
+contract DriverPayment is Ownable {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
-    using Ownable for Ownable;
 
     address public owner; // Autopass
     address private immutable uniswapRouter;
@@ -20,8 +19,8 @@ contract DriverPayment {
     uint256 public payInterestPeriod = 30 * 24 * 60 * 60; //month;
     mapping(address => uint256) private stationBalances; //machi, not usdc
     mapping(address => uint256) private driverBalances;
-    mapping(bytes32 => address) private plateToAddress;
-    mapping(address => uint256) private timestamp;
+    mapping(bytes32 => address) private registry;
+    mapping(address => uint256) private timestamps;
 
     constructor(address _uniswapRouter, address _usdcToken) {
         owner = msg.sender;
@@ -29,31 +28,32 @@ contract DriverPayment {
         usdcToken = _usdcToken;
     }
 
-    function createRegistry(
+    function createEntry(
         string memory _plate,
         address _driver
     ) external onlyOwner {
         bytes32 plateHash = keccak256(abi.encodePacked(_plate));
-        plateToAddress[plateHash] = _driver;
+        registry[plateHash] = _driver;
     }
 
-    function viewRegistry(
+    function viewEntry(
         string memory _plate
     ) external view onlyOwner returns (address) {
         bytes32 plateHash = keccak256(abi.encodePacked(_plate));
-        return plateToAddress[plateHash];
+        return registry[plateHash];
     }
 
-    function updateRegistry(
+    function updateEntry(
         string memory _plate,
         address _driver
     ) external onlyOwner {
         bytes32 plateHash = keccak256(abi.encodePacked(_plate));
-        plateToAddress[plateHash] = _driver;
+        registry[plateHash] = _driver;
     }
 
-    function deleteRegistry() external onlyOwner {
-        delete plateToAddress[plateHash];
+    function deleteEntry(string memory _plate) external onlyOwner {
+        bytes32 plateHash = keccak256(abi.encodePacked(_plate));
+        delete registry[plateHash];
     }
 
     //amount進來前就要*10^18
@@ -80,11 +80,12 @@ contract DriverPayment {
         for (uint i = times; i > 0; i--) {
             driverBalances[_driver] *= (interestRate / 1e18 + 1);
         }
-        timestamp[_driver] = block.timestamp;
+        timestamps[_driver] = block.timestamp;
     }
 
     function updateDriverBalance(address _driver) internal onlyOwner {
-        uint times = (block.timestamp - timestamp[_driver]) / payInterestPeriod;
+        uint times = (block.timestamp - timestamps[_driver]) /
+            payInterestPeriod;
         if (times > 0) {
             payInterest(_driver, times);
         }
@@ -102,12 +103,16 @@ contract DriverPayment {
     ) public onlyOwner {
         updateDriverBalance(_driver);
         bytes32 plateHash = keccak256(abi.encodePacked(_plate));
-        address driver = plateToAddress[plateHash];
+        address driver = registry[plateHash];
         require(driverBalances[driver] >= _amount);
         driverBalances[driver] -= _amount;
         driverBalances[_gasStation] += _amount;
         uint256 _reward = (_amount * rewardRate) / 1e18;
         driverBalances[driver] += _reward;
+    }
+
+    function createStation(address station) external view returns (uint256) {
+        return stationBalances[station];
     }
 
     function stationBalanceOf(address station) external view returns (uint256) {
