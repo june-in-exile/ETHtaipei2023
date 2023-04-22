@@ -21,7 +21,7 @@ contract DriverPayment {
     mapping(address => uint256) Station_balances; //machi, not usdc
     mapping(address => uint256) User_balances;
     mapping(bytes32 => address) licenseToAddress;
-    mapping(bytes32 => address) Timestamp;
+    mapping(address => uint256) Timestamp;
 
     constructor(address _uniswapRouter, address _usdcToken) {
         _owner = msg.sender;
@@ -29,10 +29,10 @@ contract DriverPayment {
         usdcToken = _usdcToken;
         User_count = 0;
         Station_count = 0;
-        _REWARD_RATE = 0.05 ether; // 5%
-        _INTEREST_RATE = 0.1 ether; // 10%
-        _STATION_SERVICE_FEE_RATE = 0.02 ether; // 2%
-        _PAY_INTEREST_PERIOD = 2592000;
+        _REWARD_RATE = 0.05 ether; //5%
+        _INTEREST_RATE = 0.1 ether; //10%
+        _STATION_SERVICE_FEE_RATE = 0.02 ether; //2%
+        _PAY_INTEREST_PERIOD = 2592000; //month
     }
 
     //if function with this modifier should satisfy owner check
@@ -41,7 +41,7 @@ contract DriverPayment {
         _;
     }
 
-    function depositWETH(uint256 amount) external {
+    function depositWETH(uint256 amount) public payable {
         //amount進來前就要*10^18
         address[] memory path = new address[](2);
         path[0] = IUniswapV2Router02(uniswapRouter).WETH();
@@ -73,31 +73,36 @@ contract DriverPayment {
         User_balances[driver_address] += _reward;
     }
 
-    function pay_interest(address user_addr, uint times) internal onlyOwner {
+    function pay_interest(
+        address driver_address,
+        uint times
+    ) internal onlyOwner {
         for (uint i = times; i > 0; i--) {
-            User_balances[user_addr] *= _INTEREST_RATE / 1e18;
+            User_balances[driver_address] *= _INTEREST_RATE / 1e18;
         }
-        Timestamp[user_addr] =
+        Timestamp[driver_address] =
             block.timestamp -
             (block.timestamp % _PAY_INTEREST_PERIOD);
     }
 
-    function user_watch_balance(address user_addr) public {
-        uint times = Timestamp[user_addr] -
+    function driver_watch_balance(
+        address driver_address
+    ) public returns (uint256) {
+        uint times = Timestamp[driver_address] -
             block.timestamp /
             _PAY_INTEREST_PERIOD;
         if (times > 0) {
-            pay_interest(user_addr, times);
+            pay_interest(driver_address, times);
         }
-        return User_balances[user_addr];
+        return User_balances[driver_address];
     }
 
     function registerCar(
         string memory license,
-        address user_address
+        address driver_address
     ) public onlyOwner {
         bytes32 licenseHash = keccak256(abi.encodePacked(license));
-        licenseToAddress[licenseHash] = user_address;
+        licenseToAddress[licenseHash] = driver_address;
     }
 
     function user_balanceOf() external view returns (uint256) {
