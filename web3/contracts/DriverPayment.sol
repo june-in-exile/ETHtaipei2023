@@ -58,6 +58,7 @@ contract DriverPayment is Ownable {
 
     //amount進來前就要*10^18
     function depositWETH(uint256 amount) public payable {
+        IERC20(usdcToken).transferFrom(msg.sender, address(this), amount);
         address[] memory path = new address[](2);
         path[0] = uniswapRouter.WETH();
         path[1] = usdcToken;
@@ -82,7 +83,7 @@ contract DriverPayment is Ownable {
             address(this),
             deadline
         );
-        require(ethRemained == 0, "too much ETH"");
+        require(ethRemained == 0, "too much ETH");
         driverBalances[msg.sender] += tokenReceived;
     }
 
