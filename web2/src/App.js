@@ -1,7 +1,9 @@
+
 import { useState, useEffect } from "react";
 import restaurant from "./images/restaurant.png";
 import gasStation from "./images/gasoline-pump.png";
 import GasStationPage from "./GasStation";
+
 function WalletButton(props) {
   const [isMetamaskInstalled, setMetamaskInstalled] = useState(true);
   const [isConnected, setConnected] = useState(false);
@@ -10,14 +12,14 @@ function WalletButton(props) {
   const connectWalletAccount = async () => {
     // to detect whether the wallet is installed
     if (isConnected === false) {
-      if (window.ethereum) {
+      // if (window.ethereum) {
         const accounts = await window.ethereum.request({
           method: "eth_requestAccounts",
         });
         setAccounts(accounts);
         setConnected(true);
         setLogged(true);
-      }
+      // }
     }
     console.log(isLogged);
   };
@@ -33,7 +35,7 @@ function WalletButton(props) {
   }, []);
   return (
     <div
-      className="basis-5/12 w-2/5 ml-auto text-center flex flex-col justify-center rounded-2xl border-2 border-yellow-200 hover:border-yellow-300 active:border-yellow-400 shadow-lg"
+      className="basis-5/12 w-2/5 ml-auto text-center flex flex-col justify-center rounded-2xl border-2 border-yellow-200 hover:border-yellow-300 active:border-yellow-400 shadow-lg cursor-pointer"
       onClick={connectWalletAccount}
     >
       <div>
@@ -66,11 +68,19 @@ function Item(props) {
   }
   return (
     <div
-      className="flex flex-col border-2 border-yellow-300 shadow-lg cursor-pointer basis-1/5 h-1/3 mx-8 my-8 rounded-3xl font-mono p-4"
+      className="flex flex-col border-2 border-yellow-300 shadow-lg cursor-pointer hover:shadow-xl active:shadow-2xl w-56 h-56 mx-8 my-8 rounded-3xl font-mono p-4"
       onClick={handleItemClick}
     >
-      <img src={item.photo} className="w-1/5" />
-      <div className="basis-1/5 border-b-2 border-yellow-300 mt-5">{item.name}</div>
+      
+      <div className="basis-1/2 w-full border-b-2 border-yellow-300 mt-5 flex flex-row">
+        <img src={item.photo} className = "h-12 ml-1" />
+        <div className = "h-12 w-full text-center flex flex-col justify-center">
+          <div className = "">
+            {item.name}
+          </div>
+        </div>
+        
+      </div>
       <div className="text-sm basis-3/5 mt-5">{item.description}</div>
     </div>
   );
@@ -91,7 +101,7 @@ function Content(props) {
     },
   ]);
   const [pages, setPages] = useState({
-    "Gas Station": <GasStationPage setPageName = {setPageName}/>,
+    "Gas Station": <GasStationPage setPageName={setPageName} />,
   });
   return (
     <div className="w-full h-full overflow-y-auto flex flex-row">
