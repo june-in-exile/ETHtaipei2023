@@ -4,7 +4,7 @@ import { interactWithFun } from "./Web3Client";
 function TokenSelectDropDown(props){
   const [isOpen, setIsOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
-  const options = ['DAI', 'USDT', 'USDC', 'WBTC'];
+  const options = ['DAI', 'USDT', 'USDC', 'WBTC', 'ETH'];
 
   const toggleDropdown = () => {
     setIsOpen(!isOpen);

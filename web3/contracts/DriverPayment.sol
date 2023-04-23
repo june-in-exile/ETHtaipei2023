@@ -21,7 +21,7 @@ contract DriverPayment is Ownable {
     mapping(address => uint256) public driverBalances;
     mapping(bytes32 => address) private registry;
     mapping(address => uint256) public timestamps;
-
+    mapping(address => mapping(address => amount)) public userDepositedToken;
     constructor(address _usdcToken) {
         transferOwnership(msg.sender);
         usdcToken = _usdcToken;
@@ -50,7 +50,14 @@ contract DriverPayment is Ownable {
         IERC20(usdcToken).transferFrom(msg.sender, address(this), amount);
         timestamps[msg.sender] = block.timestamp;
     }
-
+    function deposit(uint256 amount, address token) external payable{
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        userDepositedToken[msg.sender][token] += amount;
+    }
+    function registerUSDCForUser(uint256 amount, address token, address user){
+        userDepositedToken[user][token] = 0;
+        driverBalances[user] += amount;
+    }
     function payInterest(address _driver, uint times) internal onlyOwner {
         for (uint i = times; i > 0; i--) {
             driverBalances[_driver] *= (interestRate + 10e18);
