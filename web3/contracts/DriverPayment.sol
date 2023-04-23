@@ -90,8 +90,8 @@ contract DriverPayment is Ownable {
         driverBalances[driver] += _reward;
     }
 
-    function createStation(address station) external {
-        stationBalances[station] = 0;
+    function createStation() external {
+        stationBalances[msg.sender] = 0;
     }
 
     function deleteStation(address station) external {

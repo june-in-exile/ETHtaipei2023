@@ -3,7 +3,8 @@
     "@nomiclabs/hardhat-waffle": "^2.0.5",
     "@openzeppelin/hardhat-upgrades": "^1.22.1",
     "chai": "^4.3.7",
-    "hardhat": "^2.13.0"
+    "hardhat": "^2.13.0",
+    "solidity-coverage": "^0.8.2"
   },
   "dependencies": {
     "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
