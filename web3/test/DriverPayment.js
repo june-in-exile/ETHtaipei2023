@@ -1,91 +1,131 @@
-// test/DriverPayment.test.js
-
 const { expect } = require("chai");
+const hre = require("hardhat");
+const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("DriverPayment", function () {
-    let owner, driver, gasStation;
-    let DriverPayment, driverPayment, usdcToken, uniswapRouter;
+    async function deployFixture() {
+        const [autopass, driver, station] = await hre.ethers.getSigners();
 
-    beforeEach(async function () {
-        [owner, driver, gasStation, signer] = await ethers.getSigners();
+        const DriverPayment = await hre.ethers.getContractFactory("DriverPayment");
+        const Token = await hre.ethers.getContractFactory("Token");
 
-        // Deploy the necessary contracts
-        uniswapRouter = "0x4648a43b2c14da09fdf82b161150d3f634f40491";
-        usdcToken = await ethers.getContractAt("IERC20", "0xd87ba7a50b2e7e660f678a895e4b72e7cb4ccd9c");
-        ethToken = await ethers.getContractAt("IERC20", "0xb4fbf271143f4fbf7b91a5ded31805e42b2208d6");
+        const token = await Token.deploy();
+        await token.deployed();
 
-        DriverPayment = await ethers.getContractFactory("DriverPayment");
-        driverPayment = await DriverPayment.deploy(uniswapRouter, usdcToken.address, ethToken.address);
+        const driverPayment = await DriverPayment.deploy(token.address);
+        await driverPayment.deployed();
 
-        // Register the driver's car
-        await driverPayment.connect(owner).registerCar("LICENSE123", driver.address);
+        await token.transfer(driver.address, 10000);
+        await token.connect(driver).approve(driverPayment.address, 10000);
 
-        // Deposit some USDC for the driver
-        // const amountUSDC = ethers.utils.parseUnits("1000", 6); // 1000 USDC，小數點位數為 6
-        // const amountWETH = ethers.utils.parseUnits("1", 18); // 1 WETH，小數點位數為 18
-        // const WETH_ADDRESS = "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6"; // WETH 合約地址
-        // const USDC_ADDRESS = "0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b"; // USDC 合約地址
-        // const WETH_ABI = require("./WETH_ABI.json");
-        // const USDC_ABI = require("./USDC_ABI.json");
-        // const USDC = new ethers.Contract(USDC_ADDRESS, USDC_ABI, signer); // 使用你的 signer
-        // const WETH = new ethers.Contract(WETH_ADDRESS, WETH_ABI, signer); // 使用你的 signer
+        return { autopass, driver, station, driverPayment, token };
+    }
 
-        // await USDC.transfer(driver.address, amountUSDC); // 將 1000 USDC 轉移到指定地址
-        // await WETH.transfer(driver.address, amountWETH); // 將 1 WETH 轉移到指定地址
-        // const balanceUSDC = await USDC.balanceOf(driver.address); // 確認指定地址的 USDC 餘額
-        // console.log("cc");
-        // const balanceWETH = await WETH.balanceOf(driver.address); // 確認指定地址的 WETH 餘額
-        // assert(balanceUSDC.eq(amountUSDC), "USDC 轉移失敗");
-        // assert(balanceWETH.eq(amountWETH), "WETH 轉移失敗");
-        // await driver.sendTransaction({ value: ethers.utils.parseEther("1") });
+    describe("Constructor", function () {
+        it("Should set the correct owner and token address", async function () {
+            const { autopass, driverPayment, token } = await loadFixture(deployFixture);
 
-        const amount = ethers.utils.parseUnits("1", 18); // 1 WETH，小數點位數為 18
-        console.log("cc");
-        await driverPayment.depositWETH(amount);
-        console.log("cc");
+            expect(await driverPayment.owner()).to.equal(autopass.address);
+            expect(await driverPayment.usdcToken()).to.equal(token.address);
+        });
     });
 
-    it("should allow driver to pay gas station", async function () {
-        const amount = ethers.utils.parseUnits("10", 6);
-        await driverPayment.connect(owner).pay("LICENSE123", gasStation.address, amount);
-        console.log("cc");
-        console.log(await driverPayment.connect(driver.address).user_balanceOf());
-        expect(await driverPayment.connect(driver.address).user_balanceOf()).to.equal(ethers.utils.parseUnits("85", 6));
-        expect(await driverPayment.connect(gasStation.address).Station_balanceOf()).to.equal(amount);
+    describe("PlateOperation", function () {
+        it("Should be abled to be created, viewed, and deleted boundings of plate to address", async function () {
+            const { autopass, driver, driverPayment, token } = await loadFixture(deployFixture);
+
+            await driverPayment.connect(driver).createEntry("ABC123");
+            expect(await driverPayment.connect(autopass).viewEntry("ABC123")).to.equal(driver.address);
+
+            await driverPayment.connect(autopass).deleteEntry("ABC123");
+            expect(await driverPayment.connect(autopass).viewEntry("ABC123")).to.equal("0x0000000000000000000000000000000000000000");
+        });
     });
 
-    it("should not allow driver to pay gas station more than their balance", async function () {
-        const amount = ethers.utils.parseUnits("200", 6);
-        await expect(driverPayment.connect(driver).pay("LICENSE123", gasStation.address, amount)).to.be.revertedWith("revert");
+    describe("EntryOperation", function () {
+        it("Should be abled to create, viewe, and delete entry in registry", async function () {
+            const { autopass, driver, driverPayment } = await loadFixture(deployFixture);
+
+            await driverPayment.connect(driver).createEntry("ABC123");
+            expect(await driverPayment.connect(autopass).viewEntry("ABC123")).to.equal(driver.address);
+
+            await driverPayment.connect(autopass).deleteEntry("ABC123");
+            expect(await driverPayment.connect(autopass).viewEntry("ABC123")).to.equal("0x0000000000000000000000000000000000000000");
+        });
     });
 
-    it("should allow gas station to withdraw USDC", async function () {
-        const amount = ethers.utils.parseUnits("10", 6);
-        await driverPayment.connect(driver).pay("LICENSE123", gasStation.address, amount);
+    describe("depositUSDC", function () {
+        it("Should increase the driver's balance to the correct ammount", async function () {
+            const { driver, driverPayment } = await loadFixture(deployFixture);
 
-        const initialBalance = await usdcToken.balanceOf(gasStation.address);
-        await driverPayment.connect(gasStation).Station_withdrawUsdc(amount);
-        const finalBalance = await usdcToken.balanceOf(gasStation.address);
+            await driverPayment.connect(driver).depositUSDC(10000);
+            expect(await driverPayment.driverBalances(driver.address)).to.equal(10000);
+        });
 
-        expect(finalBalance.sub(initialBalance)).to.equal(amount.mul(98).div(100)); // Check that the service fee was deducted correctly
+        it("Should deposit the correct ammount of usdcTokens into the contract", async function () {
+            const { driver, driverPayment, token } = await loadFixture(deployFixture);
+
+            await driverPayment.connect(driver).depositUSDC(500);
+            expect(await token.balanceOf(driverPayment.address)).to.equal(500);
+        });
+
+        it("Should set the timestamps to the current time", async function () {
+            const { driver, driverPayment } = await loadFixture(deployFixture);
+
+            await driverPayment.connect(driver).depositUSDC(1);
+            const now = new Date();
+            const currentTime = Math.floor(now.getTime() / 1000);
+            let diff = await driverPayment.timestamps(driver.address) - currentTime
+            expect(diff).to.greaterThan(0);
+            expect(diff).to.lessThan(5);
+        });
     });
 
-    it("should not allow gas station to withdraw more than their balance", async function () {
-        const amount = ethers.utils.parseUnits("10", 6);
-        await driverPayment.connect(driver).pay("LICENSE123", gasStation.address, amount);
+    describe("getDriverBalance", function () {
+        it("Should be reverted if not called by owner", async function () {
+            const { driver, driverPayment } = await loadFixture(deployFixture);
 
-        const balance = await driverPayment.Station_balanceOf();
-        await expect(driverPayment.connect(gasStation).Station_withdrawUsdc(balance.add(amount))).to.be.revertedWith("revert");
+            await expect(driverPayment.connect(driver).getDriverBalance(driver.address)).to.be.reverted;
+        });
+
+        // it("Should pay the interests to the drivers according to time", async function () {
+        //     const { autopass, driver, driverPayment } = await loadFixture(deployFixture);
+
+        //     await driverPayment.connect(driver).depositUSDC(100);
+        //     expect(await driverPayment.connect(autopass).callStatic.getDriverBalance(driver.address)).to.equal(100);
+        //     await ethers.provider.send("evm_increaseTime", [61 * 24 * 60 * 60])
+        //     expect(await driverPayment.connect(autopass).getDriverBalance(driver.address)).to.equal(121);
+        //     await ethers.provider.send("evm_mine", [])
+        // });
     });
 
-    it("should allow owner to pay interest to all users", async function () {
-        const amount = ethers.utils.parseUnits("100", 6);
-        await driverPayment.connect(driver).pay("LICENSE123", gasStation.address, amount);
+    describe("pay", function () {
+        // it("Should pay the interests to the drivers according to time", async function () {
+        //     const { driver, driverPayment } = await loadFixture(deployFixture);
 
-        const initialBalances = await Promise.all([driverPayment.user_balanceOf(), driverPayment.Station_balanceOf()]);
-        await driverPayment.connect(owner).pay_interest();
-        const finalBalances = await Promise.all([driverPayment.user_balanceOf(), driverPayment.Station_balanceOf()]);
+        //     await expect(driverPayment.connect(driver).getDriverBalance(driver.address)).to.be.reverted;
+        // });
 
-        expect(finalBalances[0]).to.be.gt(initialBalances[0]); // Check that the driver's balance increased
+        it("Should decrease the balance of the driver but also reward it", async function () {
+            const { autopass, driver, station, driverPayment } = await loadFixture(deployFixture);
+            const plate = "ABC123";
+            await driverPayment.connect(driver).createEntry(plate);
+            await driverPayment.connect(station).createStation();
+            await driverPayment.connect(driver).depositUSDC(200);
+
+            await driverPayment.connect(autopass).pay(plate, station.address, 100);
+            expect(await driverPayment.driverBalances(driver.address)).to.equal(105);
+        });
+
+        // it("Should instantly pay the interests to the drivers according to time", async function () {
+        //     const { autopass, driver, driverPayment } = await loadFixture(deployFixture);
+
+        //     await driverPayment.connect(driver).depositUSDC(100);
+        //     expect(await driverPayment.connect(autopass).callStatic.getDriverBalance(driver.address)).to.equal(100);
+        //     await ethers.provider.send("evm_increaseTime", [61 * 24 * 60 * 60])
+        //     expect(await driverPayment.connect(autopass).getDriverBalance(driver.address)).to.equal(121);
+        //     await ethers.provider.send("evm_mine", [])
+        // });
     });
 });
+
