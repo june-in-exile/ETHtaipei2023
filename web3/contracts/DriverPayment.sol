@@ -21,7 +21,7 @@ contract DriverPayment is Ownable {
     mapping(address => uint256) public driverBalances;
     mapping(bytes32 => address) private registry;
     mapping(address => uint256) public timestamps;
-    mapping(address => mapping(address => amount)) public driverDepositedToken;
+    mapping(address => mapping(address => uint256)) public driverDepositedToken;
     constructor(address _usdcToken) {
         transferOwnership(msg.sender);
         usdcToken = _usdcToken;
@@ -56,7 +56,7 @@ contract DriverPayment is Ownable {
         driverDepositedToken[msg.sender][token] += amount;
     }
 
-    function registerUSDCForUser(uint256 amount, address token, address user){
+    function registerUSDCForUser(uint256 amount, address token, address user) external{
         driverDepositedToken[user][token] = 0;
         driverBalances[user] += amount;
     }

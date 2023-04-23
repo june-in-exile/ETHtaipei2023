@@ -1,10 +1,18 @@
 import { useState, useEffect } from "react";
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import { interactWithFun } from "./Web3Client";
+class Token{
+  constructor(id, name, amount, address){
+    this.id = id
+    this.name = name
+    this.amount = amount
+    this.address = address
+  }
+}
 function TokenSelectDropDown(props){
   const [isOpen, setIsOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
-  const options = ['DAI', 'USDT', 'USDC', 'WBTC', 'ETH'];
+  const {tokens} = props;
 
   const toggleDropdown = () => {
     setIsOpen(!isOpen);
@@ -34,13 +42,13 @@ function TokenSelectDropDown(props){
             aria-orientation="vertical"
             aria-labelledby="options-menu"
           >
-            {options.map((option) => (
+            {tokens.map((token) => (
               <li
-                key={option}
+                key={token.name}
                 className="text-gray-900 cursor-pointer hover:bg-gray-100 block px-4 py-2 text-sm"
-                onClick={() => handleOptionClick(option)}
+                onClick={() => handleOptionClick(token.name)}
               >
-                {option}
+                {token.name}
               </li>
             ))}
           </ul>
@@ -265,11 +273,10 @@ function GasStationInteract(props) {
     "Tx Hash",
   ]);
   const [tokens, setTokens] = useState([
-    { id: 0, name: 'DAI', amount: 10 },
-    { id: 1, name: 'USDT', amount: 5 },
-    { id: 2, name: 'USDC', amount: 20 },
-    { id: 3, name: 'DAI', amount: 15 },
-    { id: 3, name: 'ETH', amount: 1.6 },
+    new Token(0, 'WETH', 1.5, "0x014A442480DbAD767b7615E55E271799889FA1a7"),
+    new Token(0, 'WBTC', 2.1, "0xb9c0e8a3E52042aa8e47055831318D9346153d7B"),
+    new Token(0, 'ETH', 3.1, "0x56b03d90506A8A8dca7d9cb3295cFf67c7BF4cAE"),
+    new Token(0, 'USDC', 101, "0x7aDD3eEe9B233d15A31C45809C3B92178D017d2D"),
   ])
   return (
     <div className="w-full h-full p-10 font-mono flex flex-col overflow-y-auto">
@@ -277,7 +284,7 @@ function GasStationInteract(props) {
         <GasStationInteractionButton text="FULL" />
         <GasStationInteractionButton text="AUTO" />
       </div> */}
-      <GasStationDeposit />
+      <GasStationDeposit tokens = {tokens}/>
       <TokenTable tokens = {tokens}/>
       <div className="w-full mx-auto h-3/5 mt-20 flex flex-col">
         <div className="mx-auto mb-6 text-3xl flex flex-row">
@@ -485,7 +492,7 @@ function GasStationDeposit(props) {
         </div>
         <div className="mt-6 h-2/5 w-full border-2 border-yellow-300 rounded-3xl pt-4 px-4 shadow-lg">
           <input className="text-3xl w-full  focus:outline-none" placeholder="0"/>
-          <TokenSelectDropDown/>
+          <TokenSelectDropDown tokens = {props.tokens}/>
         </div>
         <div className="mt-8 bg-yellow-300 w-full mx-auto h-1/6 rounded-2xl flex flex-col justify-center shadow-lg active:bg-yellow-500 hover:bg-yellow-400 cursor-pointer">
             <div className = "w-full text-center font-bold text-xl text-white" onClick={saveHandler}>Save</div>

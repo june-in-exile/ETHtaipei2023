@@ -1,5 +1,8 @@
 import Fun from "./Fun.json";
+import DriverPayment from "./DriverPayment.json"
 import Web3 from "web3";
+import ContractConfig from "./ContractConfig.json"
+
 const web3 = new Web3(window.ethereum);
 const connectMetamask = async () => {
   try {
@@ -35,5 +38,19 @@ const interactWithFun = async () => {
     console.error(error);
   }
 };
+const deposit = async (tokenAddress, amount) => {
+  try {
+    const account = await connectMetamask();
+    const depositContractAddress = ContractConfig.DriverPaymentAddress;
+    const contractInstance = new web3.eth.Contract(DriverPayment.abi, depositContractAddress);
+    contractInstance.options.address = depositContractAddress
+    const result = await contractInstance.methods
+        .deposit(amount, tokenAddress)
+        .send({from: account, value: web3.utils.toWei(amount, 'ether')});
+    console.log(result)
 
+  } catch (err) {
+    console.error(err)
+  }
+}
 export { interactWithFun };
