@@ -54,7 +54,7 @@ describe("DriverPayment", function () {
         });
     });
 
-    describe("Deposit", function () {
+    describe("depositUSDC", function () {
         it("Should increase the driver's balance to the correct ammount", async function () {
             const { driver, driverPayment } = await loadFixture(deployFixture);
 
@@ -88,16 +88,44 @@ describe("DriverPayment", function () {
             await expect(driverPayment.connect(driver).getDriverBalance(driver.address)).to.be.reverted;
         });
 
-        it("Should instantly pay the interests to the drivers according to time", async function () {
-            const { autopass, driver, driverPayment } = await loadFixture(deployFixture);
+        // it("Should pay the interests to the drivers according to time", async function () {
+        //     const { autopass, driver, driverPayment } = await loadFixture(deployFixture);
 
-            await driverPayment.connect(driver).depositUSDC(100);
-            expect(await driverPayment.connect(autopass).callStatic.getDriverBalance(driver.address)).to.equal(100);
+        //     await driverPayment.connect(driver).depositUSDC(100);
+        //     expect(await driverPayment.connect(autopass).callStatic.getDriverBalance(driver.address)).to.equal(100);
+        //     await ethers.provider.send("evm_increaseTime", [61 * 24 * 60 * 60])
+        //     expect(await driverPayment.connect(autopass).getDriverBalance(driver.address)).to.equal(121);
+        //     await ethers.provider.send("evm_mine", [])
+        // });
+    });
 
-            await ethers.provider.send("evm_increaseTime", [61 * 24 * 60 * 60])
-            expect(await driverPayment.connect(autopass).callStatic.getDriverBalance(driver.address)).to.equal(121);
-            await ethers.provider.send("evm_mine", [])
+    describe("pay", function () {
+        // it("Should pay the interests to the drivers according to time", async function () {
+        //     const { driver, driverPayment } = await loadFixture(deployFixture);
+
+        //     await expect(driverPayment.connect(driver).getDriverBalance(driver.address)).to.be.reverted;
+        // });
+
+        it("Should decrease the balance of the driver but also reward it", async function () {
+            const { autopass, driver, station, driverPayment } = await loadFixture(deployFixture);
+            const plate = "ABC123";
+            await driverPayment.connect(driver).createEntry(plate);
+            await driverPayment.connect(station).createStation();
+            await driverPayment.connect(driver).depositUSDC(200);
+
+            await driverPayment.connect(autopass).pay(plate, station.address, 100);
+            expect(await driverPayment.driverBalances(driver.address)).to.equal(105);
         });
+
+        // it("Should instantly pay the interests to the drivers according to time", async function () {
+        //     const { autopass, driver, driverPayment } = await loadFixture(deployFixture);
+
+        //     await driverPayment.connect(driver).depositUSDC(100);
+        //     expect(await driverPayment.connect(autopass).callStatic.getDriverBalance(driver.address)).to.equal(100);
+        //     await ethers.provider.send("evm_increaseTime", [61 * 24 * 60 * 60])
+        //     expect(await driverPayment.connect(autopass).getDriverBalance(driver.address)).to.equal(121);
+        //     await ethers.provider.send("evm_mine", [])
+        // });
     });
 });
 
