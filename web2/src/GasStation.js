@@ -247,7 +247,7 @@ function GasStationInteract(props) {
       2023,
       4,
       12,
-      "USDT",
+      "ETH",
       "45.6",
       "China Gas",
       "34.5",
@@ -269,6 +269,7 @@ function GasStationInteract(props) {
     { id: 1, name: 'USDT', amount: 5 },
     { id: 2, name: 'USDC', amount: 20 },
     { id: 3, name: 'DAI', amount: 15 },
+    { id: 3, name: 'ETH', amount: 1.6 },
   ])
   return (
     <div className="w-full h-full p-10 font-mono flex flex-col overflow-y-auto">
