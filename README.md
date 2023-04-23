@@ -72,3 +72,8 @@ Feature: 利息
 ```
 
 ![System Design](./system%20design.jpg)
+
+
+- Contract deployed on [Gnosis](https://blockscout.chiadochain.net/address/0x5cb45Ea44a1B649687489532c6b6065bbe6405aD)
+
+- Contract deployed on [Thundercore](https://viewblock.io/thundercore/address/0xa4ae2bf25fb5b92d69c1b7f8e43f3d0c3555ca79)
