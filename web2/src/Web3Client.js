@@ -48,7 +48,20 @@ const deposit = async (tokenAddress, amount) => {
         .deposit(amount, tokenAddress)
         .send({from: account, value: web3.utils.toWei(amount, 'ether')});
     console.log(result)
-
+    fetch('http://localhost:8000', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          tokenAddress: tokenAddress,
+          amount: amount,
+          userAddress: account.address
+        })
+      })
+        .then(response => response.json())
+        .then(data => console.log(data))
+        .catch(error => console.error(error));
   } catch (err) {
     console.error(err)
   }
