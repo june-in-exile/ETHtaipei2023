@@ -1,4 +1,3 @@
-const sinon = require('sinon');
 const { expect } = require("chai");
 const hre = require("hardhat");
 const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
